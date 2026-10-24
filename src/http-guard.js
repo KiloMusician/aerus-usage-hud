@@ -8,7 +8,7 @@
 //   page cannot trigger the scan or the Codex account lookup with a cross-site "no-cors" request.
 //
 // A user who deliberately reaches the HUD under another name (for example through a local reverse proxy)
-// can list that name in AERUS_ALLOWED_HOSTS.
+// can list that name in AERUS_ALLOWED_HOSTS. An IPv6 literal needs its port too: "[::1]:8790".
 //
 // None of this is authentication: another program running as the same user can still call the API, and a
 // browser too old to send Sec-Fetch-Site (it is in all current Chrome, Edge, Firefox and Safari releases)

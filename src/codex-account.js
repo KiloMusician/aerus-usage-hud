@@ -47,15 +47,16 @@ export function codexCandidates() {
 
 // On Windows kill() ends only the process itself, so the app-server's own children are ended with taskkill
 // (by full path: a bare name could be resolved from the current folder).
-function stopChild(child) {
-  if (!child) return;
-  try { child.kill(); } catch { /* The app-server may already have exited. */ }
+export function stopChild(child) {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return; // already gone: its pid may be reused
   if (process.platform === 'win32' && child.pid) {
+    // taskkill has to run while the parent is alive, or it cannot find the children.
     const taskkill = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'taskkill.exe');
     try {
       spawn(taskkill, ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true }).on('error', () => {});
-    } catch { /* Best effort. */ }
+    } catch { /* Fall through to kill(). */ }
   }
+  try { child.kill(); } catch { /* The app-server may already have exited. */ }
 }
 
 function readWithCodex(executable) {

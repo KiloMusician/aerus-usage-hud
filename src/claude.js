@@ -73,7 +73,9 @@ async function scanClaudeNow({ claudeDir = defaultClaudeDir(), dataDir }) {
   }
   if (changed && !degraded) await saveLedger(ledgerFile, ledger);
 
-  const events = Object.values(ledger.records).map(toEvent);
+  // A record already saved with an impossible counter or time (an older build stored such values) is left in
+  // the file but not counted or shown.
+  const events = Object.values(ledger.records).filter(plausible).map(toEvent);
   return { found, files: files.length, events, ledgerRecords: events.length, degraded };
 }
 
@@ -95,6 +97,11 @@ export function mergeRecord(records, rec) {
     cw1h: rec.cw1h,
   } });
   return true;
+}
+
+function plausible(rec) {
+  const counters = [rec.input, rec.output, rec.cacheRead, rec.cw5m, rec.cw1h];
+  return counters.every((n) => Number.isFinite(n) && n >= 0 && n <= 1e12) && parseTime(rec.at) !== null;
 }
 
 export function toEvent(rec) {

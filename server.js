@@ -69,7 +69,10 @@ async function reconcileAccount(store, localTotal) {
     localTotalAtCapture: localTotal,
     source: 'Codex app-server account/usage/read',
   });
-  if (!outcome.accepted) return { status: 'rejected', reason: outcome.reason, changed: false };
+  if (!outcome.accepted) {
+    lastLookupFailure = { at: Date.now(), reason: outcome.reason };
+    return { status: 'rejected', reason: outcome.reason, changed: false };
+  }
   return { status: 'live', reason: null, changed: true };
 }
 
