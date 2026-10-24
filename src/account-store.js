@@ -2,6 +2,7 @@
 // and work offline. Snapshots are only written from a successful live lookup. Nothing is estimated.
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 const VERSION = 1;
 const HISTORY_LIMIT = 200;
@@ -27,9 +28,13 @@ export async function loadStore(dataDir) {
 export async function saveStore(dataDir, store) {
   await fsp.mkdir(dataDir, { recursive: true });
   const file = storePath(dataDir);
-  const temp = `${file}.tmp`;
-  await fsp.writeFile(temp, JSON.stringify(store, null, 2));
-  await fsp.rename(temp, file);
+  const temp = `${file}.${randomUUID()}.tmp`;
+  try {
+    await fsp.writeFile(temp, JSON.stringify(store, null, 2));
+    await fsp.rename(temp, file);
+  } finally {
+    await fsp.rm(temp, { force: true }).catch(() => {});
+  }
 }
 
 // Records a successful live lookup. The lifetime total can only stay the same or grow. A lower value is

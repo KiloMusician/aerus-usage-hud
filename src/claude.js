@@ -148,13 +148,21 @@ function usageRecord(json, file) {
 }
 
 async function loadLedger(file) {
+  let contents;
   try {
-    const data = JSON.parse(await fsp.readFile(file, 'utf8'));
-    if (data && data.version === LEDGER_VERSION && data.records) return data;
-  } catch {
-    // Missing or unreadable ledger: start a new one.
+    contents = await fsp.readFile(file, 'utf8');
+  } catch (error) {
+    if (error.code === 'ENOENT') return { version: LEDGER_VERSION, records: {} };
+    throw new Error(`Claude history ledger unreadable at ${file}: ${error.message}`, { cause: error });
   }
-  return { version: LEDGER_VERSION, records: {} };
+  try {
+    const data = JSON.parse(contents);
+    if (data?.version === LEDGER_VERSION && data.records &&
+        typeof data.records === 'object' && !Array.isArray(data.records)) return data;
+  } catch (error) {
+    throw new Error(`Claude history ledger corrupt at ${file}; original retained`, { cause: error });
+  }
+  throw new Error(`Unsupported Claude history ledger at ${file}; original retained`);
 }
 
 async function saveLedger(file, ledger) {

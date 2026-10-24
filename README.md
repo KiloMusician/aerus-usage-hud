@@ -80,7 +80,25 @@ Aerus AI Usage HUD is intended to work alongside your existing AI development en
 
 **Using Claude Code?** Keep your Claude Code activity visible alongside your other tools.
 
-**Running Ollama locally?** Include supported local model activity in the same dashboard.
+**Running Ollama locally?** Only usage captured by a specific adapter is recognized:
+
+- Set `AERU_OLLAMA_CAPTURE_DIR` to a folder of captures, or place captures at
+  `${CODEX_HOME}/local14b-tool-adapter/captures/` (default `~/.codex/local14b-tool-adapter/captures/`).
+- Filenames must end in `RAW-UPSTREAM-SSE.txt`; each must contain `data:` JSON events with
+  `type: response.completed` and a `response.usage` object.
+- This repository does **not** ship the producer of these capture files. An ordinary Ollama
+  installation is not automatically measured by the HUD. Other local workflows are unmeasured.
+
+**Pricing disclosure:** Dollar amounts are estimated API-equivalent costs, **not**
+subscription bills or remaining allowance. When an unrecognized model is encountered,
+the API includes a warning naming the model whose fallback price was used.
+Cached token reads are counted as token usage, with their separate price factors.
+
+**Installer provenance:** The repository includes a prebuilt Windows installer, but this
+source-only review did not establish which commit or build produced it. A future release
+should build in CI, publish a GitHub Release with a SHA-256 checksum and provenance
+record linking the published artifact, workflow, and source commit. A checksum alone
+shows file equality, not source-to-binary equivalence.
 
 Available totals depend on the data that each tool makes accessible. The HUD should not be treated as an official billing statement or guaranteed real-time account usage meter.
 

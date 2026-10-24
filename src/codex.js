@@ -98,6 +98,8 @@ async function parseCodexFile(file, codexDir) {
     let tokens = null;
     if (count.last) {
       tokens = codexTokens(count.last);
+      // Last usage is the delta; total, when supplied, is also the next baseline.
+      if (count.total) prev = codexTokens(count.total) || prev;
     } else if (count.total) {
       const cur = codexTokens(count.total);
       if (cur) {

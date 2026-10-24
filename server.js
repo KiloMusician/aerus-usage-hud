@@ -11,6 +11,7 @@ import { readLocalOllamaUsage } from './src/local-ollama.js';
 import { loadStore, saveStore, recordSnapshot } from './src/account-store.js';
 import { computeCodexTotals, computeOllamaTotal, ollamaEvents } from './src/totals.js';
 import { buildView, RANGES } from './src/aggregate.js';
+import { codexRate, claudeRate } from './src/pricing.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, 'public');
@@ -57,6 +58,7 @@ function recordOllama(store, ollama) {
   if (!ollama?.available) return false;
   const observed = Math.round(ollama.totalTokens);
   const total = Math.max(observed, store.ollama?.total ?? 0);
+  if (total === (store.ollama?.total ?? 0)) return false;
   store.ollama = { total, observedAt: new Date().toISOString(), source: 'local Ollama adapter captures' };
   return true;
 }
@@ -65,6 +67,13 @@ function clampOffset(raw) {
   const n = Math.trunc(Number(raw));
   if (!Number.isFinite(n)) return 0;
   return Math.min(0, Math.max(-3650, n));
+}
+
+let snapshotQueue = Promise.resolve();
+function serializeSnapshot(task) {
+  const run = snapshotQueue.then(task);
+  snapshotQueue = run.catch(() => {});
+  return run;
 }
 
 async function usageFor(url) {
@@ -83,14 +92,22 @@ async function usageFor(url) {
   if (!codex.found) warnings.push(`Codex history not found at ${codexDir}.`);
   if (!claude.found) warnings.push(`Claude Code logs not found at ${path.join(claudeDir, 'projects')}.`);
   const ollamaUsage = ollamaEvents(ollama?.records ?? []);
+  // Preserve fallback-price assumptions as explicit user-facing warnings.
+  const assumedRates = new Set([...codex.events, ...claude.events].filter((event) =>
+    !(event.provider === 'claude' ? claudeRate(event.model).known : codexRate(event.model).known)
+  ).map((event) => event.provider + ': ' + event.model));
+  if (assumedRates.size) warnings.push('Estimated API costs use substitute rates for unrecognized models: ' + [...assumedRates].sort().join(', ') + '. These are not official prices.');
 
   let allTime = null;
   if (range === 'all') {
-    const store = await loadStore(DATA_DIR);
-    const localTotal = codex.events.reduce((sum, event) => sum + event.total, 0);
-    const lookup = await reconcileAccount(store, localTotal);
-    const ollamaChanged = recordOllama(store, ollama);
-    if (lookup.changed || ollamaChanged) await saveStore(DATA_DIR, store);
+    const { store, lookup } = await serializeSnapshot(async () => {
+      const store = await loadStore(DATA_DIR);
+      const localTotal = codex.events.reduce((sum, event) => sum + event.total, 0);
+      const lookup = await reconcileAccount(store, localTotal);
+      const ollamaChanged = recordOllama(store, ollama);
+      if (lookup.changed || ollamaChanged) await saveStore(DATA_DIR, store);
+      return { store, lookup };
+    });
 
     allTime = {
       codex: computeCodexTotals({ events: codex.events, account: store.current }),
@@ -128,12 +145,22 @@ function send(response, status, body, type) {
 
 function createServer() {
   return http.createServer(async (request, response) => {
+    try {
+    const allowedHosts = new Set([
+      `127.0.0.1:${request.socket.localPort}`,
+      `localhost:${request.socket.localPort}`,
+    ]);
+    if (!allowedHosts.has(String(request.headers.host || '').toLowerCase())) {
+      send(response, 403, 'Forbidden', 'text/plain; charset=utf-8');
+      return;
+    }
     const url = new URL(request.url || '/', `http://${HOST}`);
     if (url.pathname === '/api/usage') {
       try {
         send(response, 200, JSON.stringify(await usageFor(url)), 'application/json; charset=utf-8');
       } catch (error) {
-        send(response, 500, JSON.stringify({ error: 'Unable to scan local usage.', detail: error.message }), 'application/json; charset=utf-8');
+        console.error('Aerus usage scan failed:', error);
+        send(response, 500, JSON.stringify({ error: /Claude history ledger/.test(error.message) ? 'Saved Claude history is damaged or unreadable; original preserved. Restore from backup.' : 'Unable to scan local usage.' }), 'application/json; charset=utf-8');
       }
       return;
     }
@@ -147,8 +174,20 @@ function createServer() {
     try {
       const body = await fsp.readFile(file);
       send(response, 200, body, TYPES[path.extname(file)] || 'application/octet-stream');
-    } catch {
-      send(response, 404, 'Not found', 'text/plain; charset=utf-8');
+    } catch (error) {
+      if (error.code === 'ENOENT' || error.code === 'EISDIR') {
+        send(response, 404, 'Not found', 'text/plain; charset=utf-8');
+      } else {
+        throw error;
+      }
+    }
+    } catch (error) {
+      if (response.headersSent) { response.destroy(); return; }
+      const malformed = error instanceof URIError || error.code === 'ERR_INVALID_URL';
+      send(response, malformed ? 400 : 500,
+        JSON.stringify({ error: malformed ? 'Malformed URL.' : 'Unable to process request.' }),
+        'application/json; charset=utf-8');
+      if (!malformed) console.error('Request failed:', error);
     }
   });
 }

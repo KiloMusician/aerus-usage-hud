@@ -31,9 +31,10 @@ export function projectFromCwd(cwd, root) {
   } catch {
     decoded = cwd;
   }
-  const normalized = path.normalize(decoded);
+  const portable = decoded.replace(/\\/g, '/');
+  const normalized = path.normalize(portable);
   if (root && normalized.toLowerCase().startsWith(path.normalize(root).toLowerCase())) return 'Workspace';
-  const base = path.basename(normalized);
+  const base = path.posix.basename(normalized);
   if (!base || base === '.' || base === path.parse(normalized).root) return 'Unattributed';
   return base;
 }
