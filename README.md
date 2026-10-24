@@ -1,5 +1,8 @@
 # aerus-usage-hud
-<img width="1187" height="1383" alt="image" src="https://github.com/user-attachments/assets/64d629bc-93b9-4c5e-ae5f-6c636941e213" />
+<img width="1692" height="1359" alt="image" src="https://github.com/user-attachments/assets/5a94c987-2b11-4c87-9609-35bc86dbc61e" />
+
+
+
 # ⚡ Aerus AI Usage HUD
 
 ### One dashboard. Multiple AI tools. Your usage at a glance.

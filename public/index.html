@@ -40,6 +40,7 @@
 
     <div class="banner" id="banner" hidden></div>
 
+    <div class="dash">
     <section class="kpis">
       <article class="card codex" id="kpi-codex">
         <div class="card-head">
@@ -167,6 +168,16 @@
       </article>
     </section>
 
+    <aside class="panel models" id="models-panel" aria-labelledby="models-title">
+      <header class="panel-head">
+        <h2 id="models-title">Model proportion</h2>
+        <span class="subtle">By total token supply</span>
+      </header>
+      <ol class="model-bars" id="model-bars"></ol>
+      <div class="model-axis" id="model-axis"></div>
+      <p class="fine" id="model-note"></p>
+    </aside>
+
     <section class="panel sessions">
       <header class="panel-head">
         <h2>Recent sessions</h2>
@@ -191,6 +202,8 @@
         </table>
       </div>
     </section>
+
+    </div>
 
     <footer class="foot">
       <span><i class="dot ok"></i>Local usage database</span>
