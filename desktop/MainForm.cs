@@ -103,9 +103,34 @@ internal sealed class MainForm : Form
         }
     }
 
+    // Maximizing a borderless window must fill the monitor's work area, not the frame size.
+    private const int WmGetMinMaxInfo = 0x0024;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MinMaxInfo
+    {
+        public Point Reserved;
+        public Size MaxSize;
+        public Point MaxPosition;
+        public Size MinTrackSize;
+        public Size MaxTrackSize;
+    }
+
     // Lets the frame edges resize the window, since the frame itself is hidden.
     protected override void WndProc(ref Message message)
     {
+        if (message.Msg == WmGetMinMaxInfo)
+        {
+            var info = Marshal.PtrToStructure<MinMaxInfo>(message.LParam);
+            var monitor = Screen.FromHandle(Handle);
+            var work = monitor.WorkingArea;
+            info.MaxPosition = new Point(work.Left - monitor.Bounds.Left, work.Top - monitor.Bounds.Top);
+            info.MaxSize = work.Size;
+            Marshal.StructureToPtr(info, message.LParam, false);
+            message.Result = IntPtr.Zero;
+            return;
+        }
+
         if (message.Msg == WmNcHitTest && WindowState != FormWindowState.Maximized)
         {
             var lParam = (long)message.LParam;

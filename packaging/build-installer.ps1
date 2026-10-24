@@ -25,7 +25,12 @@ New-Item -ItemType Directory -Path $runtime -Force | Out-Null
 Copy-Item -LiteralPath $nodeExe -Destination (Join-Path $runtime 'node.exe') -Force
 $nodeVersion = (& $nodeExe --version).Trim()
 $nodeLicense = Get-ChildItem -LiteralPath (Split-Path $nodeExe) -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(LICENSE|COPYING)' } | Select-Object -First 1
-if ($nodeLicense) { Copy-Item -LiteralPath $nodeLicense.FullName -Destination (Join-Path $runtime 'NODE-LICENSE.txt') -Force }
+if ($nodeLicense) {
+    Copy-Item -LiteralPath $nodeLicense.FullName -Destination (Join-Path $runtime 'NODE-LICENSE.txt') -Force
+} else {
+    # The Node.js install may not ship its licence file; use the copy kept with the project.
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'NODE-LICENSE.txt') -Destination (Join-Path $runtime 'NODE-LICENSE.txt') -Force
+}
 Set-Content -LiteralPath (Join-Path $runtime 'NODE-VERSION.txt') -Value "Bundled runtime: Node.js $nodeVersion`r`nSource: https://nodejs.org/" -Encoding utf8
 
 if (-not (Test-Path -LiteralPath (Join-Path $stage 'Aerus AI Usage HUD.exe'))) { throw 'Published exe is missing.' }
