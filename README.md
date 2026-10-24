@@ -89,16 +89,25 @@ Aerus AI Usage HUD is intended to work alongside your existing AI development en
 - This repository does **not** ship the producer of these capture files. An ordinary Ollama
   installation is not automatically measured by the HUD. Other local workflows are unmeasured.
 
-**Pricing disclosure:** Dollar amounts are estimated API-equivalent costs, **not**
-subscription bills or remaining allowance. When an unrecognized model is encountered,
-the API includes a warning naming the model whose fallback price was used.
-Cached token reads are counted as token usage, with their separate price factors.
+**About the dollar amounts:** They are estimated API-equivalent costs, **not**
+subscription bills or remaining allowance. When a model is not in the HUD's price list, a
+substitute rate is used and the HUD shows a warning naming the model. Cached token reads are
+counted as token usage, with their separate price factors.
 
-**Installer provenance:** The repository includes a prebuilt Windows installer, but this
-source-only review did not establish which commit or build produced it. A future release
-should build in CI, publish a GitHub Release with a SHA-256 checksum and provenance
-record linking the published artifact, workflow, and source commit. A checksum alone
-shows file equality, not source-to-binary equivalence.
+**If saved history is damaged:** The HUD keeps a few small files in its data folder (the desktop app
+uses `%LOCALAPPDATA%\Aerus\AI Usage HUD\data`; `node server.js` uses `data/` next to `server.js`, or
+`AERUS_DATA_DIR`). It never overwrites one it cannot read:
+
+- `claude-ledger.json` (Claude Code history kept after Claude Code prunes old transcripts): the HUD
+  reports that it is damaged and leaves it untouched. Restore it from a backup, or move it away and
+  restart to rebuild it from the transcripts Claude Code still has.
+- `account-snapshots.json` (verified Codex account total and Ollama total): the HUD copies the damaged
+  file to `account-snapshots.json.corrupt-<id>` (or `.unsupported-<id>`), shows a warning, and starts a
+  new one. The Codex total is restored by the next successful online lookup.
+
+**Local access:** The server listens on `127.0.0.1` only and answers only requests addressed to
+`127.0.0.1` or `localhost` on its own port, from its own pages. Another website open in your browser cannot
+read the data. This is not a login: other programs running as your Windows user can still call it.
 
 Available totals depend on the data that each tool makes accessible. The HUD should not be treated as an official billing statement or guaranteed real-time account usage meter.
 
@@ -150,7 +159,7 @@ The repository is organized into the following main directories:
 | `test/` | Project tests |
 | `packaging/` | Packaging resources |
 
-Refer to `package.json` and the source documentation for available development commands.
+Run the tests with `npm run check` (it needs no network access and writes only to your temp folder).
 
 ---
 
