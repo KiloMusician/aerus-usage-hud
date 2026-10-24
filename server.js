@@ -9,7 +9,7 @@ import { scanClaude, defaultClaudeDir } from './src/claude.js';
 import { readAccountUsage } from './src/codex-account.js';
 import { readLocalOllamaUsage } from './src/local-ollama.js';
 import { updateStore, recordSnapshot } from './src/account-store.js';
-import { checkRequest } from './src/http-guard.js';
+import { checkRequest, parseAllowedHosts } from './src/http-guard.js';
 import { computeCodexTotals, computeOllamaTotal, ollamaEvents } from './src/totals.js';
 import { buildView, RANGES } from './src/aggregate.js';
 import { codexRate, claudeRate } from './src/pricing.js';
@@ -18,6 +18,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(HERE, 'public');
 const DATA_DIR = process.env.AERUS_DATA_DIR || path.join(HERE, 'data');
 const HOST = '127.0.0.1';
+const EXTRA_HOSTS = parseAllowedHosts(process.env.AERUS_ALLOWED_HOSTS);
 const PREFERRED = Number(process.env.PORT) || 8790;
 const SHOULD_OPEN = !process.argv.includes('--no-open');
 // A live account lookup is reused for this long. After that the next All Time view checks again.
@@ -156,6 +157,7 @@ function createServer() {
         pathname: url.pathname,
         headers: request.headers,
         port: request.socket.localPort,
+        extraHosts: EXTRA_HOSTS,
       });
       if (!verdict.ok) {
         send(response, verdict.status, verdict.reason, 'text/plain; charset=utf-8', verdict.status === 405 ? { Allow: 'GET, HEAD' } : {});

@@ -107,7 +107,9 @@ uses `%LOCALAPPDATA%\Aerus\AI Usage HUD\data`; `node server.js` uses `data/` nex
 
 **Local access:** The server listens on `127.0.0.1` only and answers only requests addressed to
 `127.0.0.1` or `localhost` on its own port, from its own pages. Another website open in your browser cannot
-read the data. This is not a login: other programs running as your Windows user can still call it.
+read the data. If you deliberately reach it under another name (a local reverse proxy, say), list that name in
+`AERUS_ALLOWED_HOSTS` (comma separated, `name` or `name:port`). This is not a login: other programs running as
+your Windows user can still call it.
 
 Available totals depend on the data that each tool makes accessible. The HUD should not be treated as an official billing statement or guaranteed real-time account usage meter.
 
