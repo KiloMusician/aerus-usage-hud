@@ -10,10 +10,21 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
+import { writeFileAtomic } from './atomic-write.js';
 import { claudeCost } from './pricing.js';
 import { isDirectory, listJsonl, normalizeModel, num, parseTime, projectFromCwd } from './util.js';
 
 const LEDGER_VERSION = 1;
+
+// Thrown when a ledger file exists but cannot be trusted. The file is left exactly as found.
+// kind: 'unreadable' | 'corrupt' | 'unsupported'
+export class LedgerError extends Error {
+  constructor(kind, file, options) {
+    super(`Claude history ledger ${kind} at ${file}; original retained`, options);
+    this.name = 'LedgerError';
+    this.kind = kind;
+  }
+}
 
 export function defaultClaudeDir() {
   return process.env.AERUS_CLAUDE_DIR || process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
@@ -153,21 +164,19 @@ async function loadLedger(file) {
     contents = await fsp.readFile(file, 'utf8');
   } catch (error) {
     if (error.code === 'ENOENT') return { version: LEDGER_VERSION, records: {} };
-    throw new Error(`Claude history ledger unreadable at ${file}: ${error.message}`, { cause: error });
+    throw new LedgerError('unreadable', file, { cause: error });
   }
+  let data;
   try {
-    const data = JSON.parse(contents);
-    if (data?.version === LEDGER_VERSION && data.records &&
-        typeof data.records === 'object' && !Array.isArray(data.records)) return data;
+    data = JSON.parse(contents);
   } catch (error) {
-    throw new Error(`Claude history ledger corrupt at ${file}; original retained`, { cause: error });
+    throw new LedgerError('corrupt', file, { cause: error });
   }
-  throw new Error(`Unsupported Claude history ledger at ${file}; original retained`);
+  if (data?.version === LEDGER_VERSION && data.records &&
+      typeof data.records === 'object' && !Array.isArray(data.records)) return data;
+  throw new LedgerError('unsupported', file);
 }
 
 async function saveLedger(file, ledger) {
-  await fsp.mkdir(path.dirname(file), { recursive: true });
-  const temp = `${file}.tmp`;
-  await fsp.writeFile(temp, JSON.stringify(ledger));
-  await fsp.rename(temp, file);
+  await writeFileAtomic(file, JSON.stringify(ledger));
 }
