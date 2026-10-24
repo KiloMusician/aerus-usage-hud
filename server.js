@@ -9,7 +9,7 @@ import { scanCodex, defaultCodexDir } from './src/codex.js';
 import { scanClaude, defaultClaudeDir } from './src/claude.js';
 import { readAccountUsage } from './src/codex-account.js';
 import { readLocalOllamaUsage } from './src/local-ollama.js';
-import { updateStore, recordSnapshot } from './src/account-store.js';
+import { updateStore, recordSnapshot, recordOllamaCaptures } from './src/account-store.js';
 import { checkRequest, parseAllowedHosts } from './src/http-guard.js';
 import { shortPath } from './src/util.js';
 import { computeCodexTotals, computeOllamaTotal, ollamaEvents } from './src/totals.js';
@@ -73,14 +73,11 @@ async function reconcileAccount(store, localTotal) {
   return { status: 'live', reason: null, changed: true };
 }
 
-// Keeps the largest Ollama total verified so far. Captures can be deleted, and a stored total is never lowered.
+// Adds every capture file seen to the HUD's own ledger. Captures can be rotated away, and the stored total
+// is never lowered, but new captures always count (see recordOllamaCaptures).
 function recordOllama(store, ollama) {
   if (!ollama?.available) return false;
-  const observed = Math.round(ollama.totalTokens);
-  const total = Math.max(observed, store.ollama?.total ?? 0);
-  if (total === (store.ollama?.total ?? 0)) return false;
-  store.ollama = { total, observedAt: new Date().toISOString(), source: 'local Ollama adapter captures' };
-  return true;
+  return recordOllamaCaptures(store, (ollama.records ?? []).map((record) => ({ id: record.id, tokens: record.total, at: record.at })));
 }
 
 function clampOffset(raw) {

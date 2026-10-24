@@ -75,7 +75,7 @@ function summarize(files) {
   const days = new Map();
   // One record per captured response. Cache fields are not in the captures, so none are recorded.
   summary.records = [];
-  for (const entry of files.values()) {
+  for (const [name, entry] of files) {
     if (!entry.usage.responses) continue;
     summary.responses += entry.usage.responses;
     summary.inputTokens += entry.usage.inputTokens;
@@ -85,6 +85,7 @@ function summarize(files) {
     if (entry.usage.date) days.set(entry.usage.date, (days.get(entry.usage.date) || 0) + entry.usage.totalTokens);
     if (entry.usage.at != null) {
       summary.records.push({
+        id: name,
         at: entry.usage.at,
         model: entry.usage.model,
         input: entry.usage.inputTokens,
