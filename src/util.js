@@ -6,6 +6,11 @@ export function num(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Token counters from log files: a negative or non-numeric value is damage, not usage, and counts as 0.
+export function tokenCount(value) {
+  return Math.max(0, num(value));
+}
+
 // Accepts epoch seconds, epoch milliseconds, or an ISO string. Returns epoch ms or null.
 export function parseTime(value) {
   if (value == null || value === '') return null;

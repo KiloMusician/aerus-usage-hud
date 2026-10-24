@@ -12,7 +12,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { writeFileAtomic } from './atomic-write.js';
 import { claudeCost } from './pricing.js';
-import { isDirectory, listJsonl, normalizeModel, num, parseTime, projectFromCwd } from './util.js';
+import { isDirectory, listJsonl, normalizeModel, parseTime, projectFromCwd, tokenCount } from './util.js';
 
 const LEDGER_VERSION = 1;
 
@@ -134,13 +134,13 @@ function usageRecord(json, file) {
   const message = json.message;
   const usage = message?.usage;
   if (!usage || typeof usage !== 'object') return null;
-  const input = num(usage.input_tokens);
-  const output = num(usage.output_tokens);
-  const cacheRead = num(usage.cache_read_input_tokens);
-  const cacheCreation = num(usage.cache_creation_input_tokens);
+  const input = tokenCount(usage.input_tokens);
+  const output = tokenCount(usage.output_tokens);
+  const cacheRead = tokenCount(usage.cache_read_input_tokens);
+  const cacheCreation = tokenCount(usage.cache_creation_input_tokens);
   if (!input && !output && !cacheRead && !cacheCreation) return null;
   // The 1-hour split is optional. Anything not marked 1-hour is treated as 5-minute.
-  const cw1h = num(usage.cache_creation?.ephemeral_1h_input_tokens);
+  const cw1h = tokenCount(usage.cache_creation?.ephemeral_1h_input_tokens);
   const at = parseTime(json.timestamp);
   const id = message.id || json.uuid;
   if (at == null || !id) return null;
