@@ -7,7 +7,9 @@
 // * /api/ requests that a browser marks as coming from another site (Sec-Fetch-Site) are refused, so a
 //   page cannot trigger the scan or the Codex account lookup with a cross-site "no-cors" request.
 //
-// None of this is authentication: another program running as the same user can still call the API.
+// None of this is authentication: another program running as the same user can still call the API, and a
+// browser too old to send Sec-Fetch-Site (it is in all current Chrome, Edge, Firefox and Safari releases)
+// can still make a cross-site request that triggers a scan, although it cannot read the answer.
 
 const LOOPBACK_NAMES = ['127.0.0.1', 'localhost'];
 

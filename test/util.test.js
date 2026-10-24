@@ -19,6 +19,10 @@ const cases = [
   [42, undefined, 'Unattributed'],
   ['C:\\Users\\me\\.codex\\worktree', 'C:\\Users\\me\\.codex', 'Workspace'],
   ['/home/me/.codex/worktree', '/home/me/.codex', 'Workspace'],
+  ['/home/me/.codex/', '/home/me/.codex', 'Workspace'],
+  ['/home/me/.codex-old/project', '/home/me/.codex', 'project'],
+  ['C:\\Users\\me\\.codex-old\\project', 'C:\\Users\\me\\.codex', 'project'],
+  ['c:\\users\\ME\\.CODEX\\worktree', 'C:\\Users\\me\\.codex\\', 'Workspace'],
 ];
 
 for (const [cwd, root, expected] of cases) {

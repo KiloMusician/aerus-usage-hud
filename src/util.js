@@ -32,6 +32,13 @@ export function normalizeModel(name) {
 // process runs on another OS, and vice versa, so pick the path flavour from the string itself.
 const WINDOWS_PATH = /^[A-Za-z]:|\\/;
 
+// True when `child` is `root` itself or below it ('/a/.codex-old' is not inside '/a/.codex').
+function isInside(child, root, flavour) {
+  const a = child.toLowerCase();
+  const b = root.toLowerCase().replace(/[\\/]+$/, '');
+  return a === b || a.startsWith(b + flavour.sep);
+}
+
 export function projectFromCwd(cwd, root) {
   if (!cwd || typeof cwd !== 'string') return 'Unattributed';
   let decoded = cwd;
@@ -42,7 +49,7 @@ export function projectFromCwd(cwd, root) {
   }
   const flavour = WINDOWS_PATH.test(decoded) ? path.win32 : path.posix;
   const normalized = flavour.normalize(decoded);
-  if (root && normalized.toLowerCase().startsWith(flavour.normalize(String(root)).toLowerCase())) return 'Workspace';
+  if (root && isInside(normalized, flavour.normalize(String(root)), flavour)) return 'Workspace';
   const base = flavour.basename(normalized);
   if (!base || base === '.' || base === flavour.parse(normalized).root) return 'Unattributed';
   return base;

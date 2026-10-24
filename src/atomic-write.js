@@ -18,6 +18,8 @@ const RETRY_DELAYS_MS = [5, 10, 20, 40, 80, 160, 320];
 const chains = new Map();
 
 // Runs task after every earlier task for the same key has finished, whether it succeeded or not.
+// A task must not call withFileLock again with the same key: it would wait for itself. Use a different
+// key for an outer transaction (see updateStore) when it also calls a writer that locks the file.
 export function withFileLock(key, task) {
   const previous = chains.get(key) ?? Promise.resolve();
   const run = previous.then(task);
@@ -29,16 +31,20 @@ export function withFileLock(key, task) {
   return run;
 }
 
-async function renameWithRetry(from, to, rename) {
+async function withRetry(operation) {
   for (let attempt = 0; ; attempt += 1) {
     try {
-      await rename(from, to);
-      return;
+      return await operation();
     } catch (error) {
       if (!TRANSIENT.has(error.code) || attempt >= RETRY_DELAYS_MS.length) throw error;
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
     }
   }
+}
+
+// A reader can hit the same short Windows sharing violation while another process is replacing the file.
+export function readFileWithRetry(file) {
+  return withRetry(() => fsp.readFile(file));
 }
 
 // `rename` is injectable so tests can simulate a locked target without touching the real file system.
@@ -54,7 +60,7 @@ export function writeFileAtomic(file, contents, { rename = fsp.rename } = {}) {
       } finally {
         await handle.close();
       }
-      await renameWithRetry(temp, file, rename);
+      await withRetry(() => rename(temp, file));
     } finally {
       await fsp.rm(temp, { force: true }).catch(() => {});
     }

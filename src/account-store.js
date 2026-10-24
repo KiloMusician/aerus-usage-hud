@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { withFileLock, writeFileAtomic } from './atomic-write.js';
+import { readFileWithRetry, withFileLock, writeFileAtomic } from './atomic-write.js';
 
 const VERSION = 1;
 const HISTORY_LIMIT = 200;
@@ -25,7 +25,7 @@ export async function loadStoreChecked(dataDir) {
   const file = storePath(dataDir);
   let raw;
   try {
-    raw = await fsp.readFile(file);
+    raw = await readFileWithRetry(file);
   } catch (error) {
     if (error.code === 'ENOENT') return { store: emptyStore(), problem: null, writable: true, backup: null };
     return { store: emptyStore(), problem: 'unreadable', writable: false, backup: null };

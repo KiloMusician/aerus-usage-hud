@@ -99,6 +99,10 @@ before(async () => {
     if (Date.now() > deadline) throw new Error(`server did not start:\n${output}`);
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
+  // The server moves to the next port if ours was taken between probing and binding; tests must not
+  // silently talk to some other listener.
+  const announced = Number(/Dashboard  http:\/\/127\.0\.0\.1:(\d+)/.exec(output)?.[1]);
+  assert.equal(announced, port, 'server bound the port that was probed');
 });
 
 after(async () => {
