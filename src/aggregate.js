@@ -1,6 +1,8 @@
 // Turns usage events into the view the dashboard draws.
 // Every event has: provider ('codex' | 'claude' | 'ollama'), at (epoch ms), sessionId, project, model,
 // input, output, cacheRead, cacheWrite, total, cost, and optionally cacheKnown (false when cache is not recorded).
+import { modelBreakdown } from './models.js';
+
 const HOUR = 3_600_000;
 
 export const RANGES = ['today', '7d', '30d', 'all'];
@@ -97,6 +99,7 @@ export function buildView({ events, range, offset, now = Date.now(), sources = {
   const providers = Object.fromEntries(PROVIDERS.map((p) => [p, blank()]));
   const series = Object.fromEntries(PROVIDERS.map((p) => [p, keys.map(() => 0)]));
   const sessions = new Map();
+  const inWindow = events.filter((event) => event.at >= win.start && event.at < win.end);
 
   for (const event of events) {
     if (event.at < win.start || event.at >= win.end) continue;
@@ -168,6 +171,10 @@ export function buildView({ events, range, offset, now = Date.now(), sources = {
       ]),
     ),
     share,
+    // Per-model totals for the Model Proportion chart. Account-only Codex usage has no model, so it is
+    // reported here as unattributed and kept out of the chart.
+    models: modelBreakdown(inWindow),
+    unattributed: range === 'all' && allTime ? allTime.codex.accountOnly : 0,
     series: { granularity: win.granularity, labels: keys, ...series },
     sessions: sessionRows,
     sources,

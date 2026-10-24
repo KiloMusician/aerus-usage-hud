@@ -40,7 +40,7 @@ body {
 button { font: inherit; color: inherit; }
 
 .hud {
-  max-width: 1480px;
+  max-width: 1880px;
   margin: 0 auto;
   padding: 24px 28px 18px;
 }
@@ -273,15 +273,15 @@ h1 {
   margin: 4px 0 0;
   font-family: var(--display);
   font-weight: 600;
-  font-size: 28px;
+  font-size: 24px;
   letter-spacing: 0.01em;
   color: var(--text);
   white-space: nowrap;
 }
-.grand .figure { color: var(--grand); text-shadow: 0 0 22px rgba(34, 227, 240, 0.35); font-size: 31px; }
+.grand .figure { color: var(--grand); text-shadow: 0 0 22px rgba(34, 227, 240, 0.35); font-size: 26px; }
 .card.claude .figure { color: #ffd6a8; }
 .card.codex .figure { color: #cfe4ff; }
-.figure small { font-size: 16px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.figure small { font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
 .grand .figure small { color: rgba(34, 227, 240, 0.7); }
 
 .mini {
@@ -297,7 +297,7 @@ h1 {
   display: block;
   font-family: var(--display);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -586,6 +586,10 @@ tbody tr:last-child td { border-bottom: 0; }
 /* Responsive */
 @media (max-width: 1400px) {
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Donut and cost side by side, with the wide usage chart on its own full row below. */
+  .middle { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .middle .wide { grid-column: 1 / -1; order: 3; }
+  .middle > .panel:last-child { order: 2; }
 }
 
 @media (max-width: 1180px) {
@@ -608,4 +612,87 @@ tbody tr:last-child td { border-bottom: 0; }
   .figure { font-size: 26px; }
   .grand .figure { font-size: 30px; }
   .mini b { font-size: 14px; }
+}
+
+/* Dashboard grid: one column normally; Model Proportion moves to the right on wide screens. */
+.dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+.dash > .kpis, .dash > .middle, .dash > .sessions, .dash > .models { margin: 0; }
+.dash > .kpis { margin-top: 0; }
+
+/* Model Proportion */
+.models { align-self: start; }
+.models .panel-head { align-items: baseline; }
+.subtle { font-size: 12px; color: var(--muted); letter-spacing: 0.02em; }
+.model-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.model-row {
+  display: grid;
+  grid-template-columns: 150px 1fr 84px;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.model-name {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: #cfe0f4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+.model-track {
+  position: relative;
+  height: 18px;
+  border-radius: 9px;
+  background: rgba(88, 150, 210, 0.08);
+  overflow: hidden;
+}
+.model-fill {
+  position: absolute; left: 0; top: 0; bottom: 0;
+  min-width: 3px;
+  border-radius: 9px;
+  transition: width 0.5s ease;
+}
+.model-val {
+  font-family: var(--display);
+  font-size: 13px;
+  color: var(--text);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.model-val small { display: block; font-size: 11px; color: var(--muted); font-family: "Segoe UI", system-ui, sans-serif; }
+.model-row.codex .model-val { color: #cfe4ff; }
+.model-row.claude .model-val { color: #ffd6a8; }
+.model-row.ollama .model-val { color: #cdf7dc; }
+.model-empty { color: var(--faint); font-size: 13px; padding: 24px 0; text-align: center; }
+/* Ticks sit under the bar area only: the label column (150px) and value column (84px) are excluded. */
+.model-axis {
+  position: relative;
+  height: 16px;
+  margin: 12px 96px 0 162px;
+  font-size: 11px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.model-axis span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+.model-axis span:first-child { transform: none; }
+.model-axis span:last-child { transform: translateX(-100%); }
+
+@media (min-width: 1700px) {
+  .dash { grid-template-columns: minmax(0, 1fr) 400px; }
+  .dash > .models { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: 16px; }
+  .dash > .sessions { grid-column: 1 / -1; }
+}
+
+@media (max-width: 720px) {
+  .model-row { grid-template-columns: 1fr; gap: 4px; }
+  .model-name { text-align: left; }
+  .model-val { text-align: left; }
+  .model-axis { margin: 12px 0 0; }
 }

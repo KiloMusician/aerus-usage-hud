@@ -64,7 +64,9 @@ internal sealed class MainForm : Form
         FormBorderStyle = FormBorderStyle.None;
         BackColor = Background;
         MinimumSize = new Size(1040, 760);
-        Size = new Size(1536, 940);
+        // Opens wide enough for the Model Proportion panel on the right, but never bigger than the screen.
+        var area = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1600, 900);
+        Size = new Size(Math.Min(1800, (int)(area.Width * 0.92)), Math.Min(980, (int)(area.Height * 0.92)));
         StartPosition = FormStartPosition.CenterScreen;
 
         var icon = Path.Combine(_appRoot, "assets", "aerus-usage-hud.ico");

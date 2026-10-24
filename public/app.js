@@ -102,7 +102,52 @@ function render() {
   renderChart(d);
   renderCost(d);
   renderSessions(d);
+  renderModels(d);
   setText('#foot-sources', footerText(d));
+}
+
+// Each provider keeps its colour family. Models within a provider get different shades so bars stay distinct.
+const MODEL_PALETTE = {
+  codex: ['#2f8cff', '#5aa9ff', '#1f6fd6', '#8cc4ff'],
+  claude: ['#ff8a1f', '#ffb35c', '#e0701a', '#ffa54d'],
+  ollama: ['#3ddc84', '#7af0a8', '#27b26a', '#5fe3a0'],
+  other: ['#5b6f88'],
+};
+
+function renderModels(d) {
+  const { models, total, modelCount } = d.models;
+  const list = $('#model-bars');
+  const shades = {};
+  if (!models.length) {
+    list.innerHTML = '<li class="model-empty">No model usage in this range.</li>';
+    $('#model-axis').innerHTML = '';
+  } else {
+    const max = models[0].total;
+    list.innerHTML = models
+      .map((row) => {
+        const palette = MODEL_PALETTE[row.provider] ?? MODEL_PALETTE.other;
+        shades[row.provider] = (shades[row.provider] ?? -1) + 1;
+        const colour = palette[shades[row.provider] % palette.length];
+        const width = max ? (row.total / max) * 100 : 0;
+        const label = row.provider === 'other' ? row.model : PROVIDER_META[row.provider]?.label ?? '';
+        return `<li class="model-row ${esc(row.provider)}" title="${esc(label)} · ${esc(row.model)} — ${n(row.total)} tokens (${(row.share * 100).toFixed(1)}%)">
+          <span class="model-name">${esc(row.model)}</span>
+          <span class="model-track"><span class="model-fill" style="width:${width}%;background:linear-gradient(90deg, ${colour}33, ${colour});box-shadow:0 0 10px ${colour}66"></span></span>
+          <span class="model-val">${esc(compact(row.total))}<small>${(row.share * 100).toFixed(1)}%</small></span>
+        </li>`;
+      })
+      .join('');
+    $('#model-axis').innerHTML = [0, 0.5, 1]
+      .map((f) => `<span style="left:${f * 100}%">${esc(compact(max * f))}</span>`)
+      .join('');
+  }
+
+  const unattributed = d.unattributed || 0;
+  const parts = [`Chart total ${compact(total)} across ${n(modelCount)} model${modelCount === 1 ? '' : 's'}.`];
+  if (unattributed > 0) {
+    parts.push(`Account-only Codex usage (${compact(unattributed)}) has no model identity, so it is not charted. It stays in the Codex total.`);
+  }
+  setText('#model-note', parts.join(' '));
 }
 
 // Writes the five token fields. Cache that a source does not record is shown as unavailable, not as zero.

@@ -2,7 +2,7 @@
 #   packaging\stage  : published app (exe, bundled Node runtime, server, dashboard)
 #   packaging\dist   : AerusAIUsageHUD-Setup-v<version>.exe
 # Needs the .NET 9 SDK, Node.js (only to copy its runtime), and NSIS in build-tools\nsis (see README).
-param([string]$Version = '1.0.0')
+param([string]$Version = '1.0.1')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $stage = Join-Path $root 'packaging\stage'
