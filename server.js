@@ -22,6 +22,8 @@ const DATA_DIR = process.env.AERUS_DATA_DIR || path.join(HERE, 'data');
 const HOST = '127.0.0.1';
 const EXTRA_HOSTS = parseAllowedHosts(process.env.AERUS_ALLOWED_HOSTS);
 const PREFERRED = Number(process.env.PORT) || 8790;
+// The desktop window sets this so the server uses exactly the port it was given or exits.
+const STRICT_PORT = process.env.AERUS_STRICT_PORT === '1';
 const SHOULD_OPEN = !process.argv.includes('--no-open');
 // A live account lookup is reused for this long. After that the next All Time view checks again.
 const ACCOUNT_FRESH_MS = 10 * 60_000;
@@ -268,7 +270,7 @@ for (; port < PREFERRED + 10; port += 1) {
     await listen(server, port);
     break;
   } catch (error) {
-    if (error.code !== 'EADDRINUSE' || port === PREFERRED + 9) throw error;
+    if (STRICT_PORT || error.code !== 'EADDRINUSE' || port === PREFERRED + 9) throw error;
   }
 }
 

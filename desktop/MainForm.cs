@@ -231,11 +231,27 @@ internal sealed class MainForm : Form
     {
         try
         {
-            var port = FindFreePort();
-            var url = $"http://127.0.0.1:{port}/";
-            StartServer(port);
+            string? url = null;
+            for (var attempt = 0; attempt < PortAttempts && url is null; attempt++)
+            {
+                var port = FindFreePort();
+                var candidate = $"http://127.0.0.1:{port}/";
+                StartServer(port);
+                if (await WaitForServerAsync(candidate, TimeSpan.FromSeconds(20)))
+                {
+                    url = candidate;
+                }
+                else if (_server is null || !_server.HasExited)
+                {
+                    // It is running but never answered: do not leave it behind, and do not try again.
+                    StopServer();
+                    break;
+                }
+                // Otherwise it exited straight away, usually because another program took the port
+                // between the check and the server binding it. FindFreePort now skips that port.
+            }
 
-            if (!await WaitForServerAsync(url, TimeSpan.FromSeconds(20)))
+            if (url is null)
             {
                 ShowFailure("The usage server did not start. Reopen the HUD. If it keeps happening, reinstall it from the setup file.");
                 return;
@@ -282,10 +298,17 @@ internal sealed class MainForm : Form
         startInfo.ArgumentList.Add(script);
         startInfo.ArgumentList.Add("--no-open");
         startInfo.Environment["PORT"] = port.ToString();
+        // The server must use exactly this port or exit; otherwise the window would wait on the wrong address.
+        startInfo.Environment["AERUS_STRICT_PORT"] = "1";
         startInfo.Environment["AERUS_DATA_DIR"] = Path.Combine(_dataRoot, "data");
         _job ??= new ChildJob();
         _server = Process.Start(startInfo);
-        if (_server is not null) _job.Add(_server);
+        if (_server is not null && !_job.Add(_server))
+        {
+            // Without the job object the server could outlive this window.
+            try { _server.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
+            throw new InvalidOperationException("Windows would not tie the local server to this window, so it was not started.");
+        }
     }
 
     private async Task<bool> WaitForServerAsync(string url, TimeSpan timeout)

@@ -26,7 +26,9 @@ internal sealed class ChildJob : IDisposable
         }
     }
 
-    public void Add(Process process) => AssignProcessToJobObject(_handle, process.Handle);
+    // False when Windows refused the assignment. The server then would not be tied to this app's lifetime,
+    // so the caller must not keep it running.
+    public bool Add(Process process) => AssignProcessToJobObject(_handle, process.Handle);
 
     public void Dispose() => CloseHandle(_handle);
 
