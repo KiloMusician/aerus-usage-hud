@@ -68,13 +68,40 @@ test('overlapping updateStore calls do not lose each other\'s changes', async ()
   assert.equal(JSON.parse(fs.readFileSync(storePath(dir), 'utf8')).ollama.total, 32);
 });
 
-test('an unusable Claude ledger raises a typed error and keeps its bytes', async () => {
+function writeTranscript(claudeDir, id, tokens) {
+  const dir = path.join(claudeDir, 'projects', 'p');
+  fs.mkdirSync(dir, { recursive: true });
+  const line = { type: 'assistant', timestamp: new Date().toISOString(), sessionId: 's', cwd: '/work/demo',
+    message: { id, model: 'claude-sonnet-4-5', usage: { input_tokens: tokens, output_tokens: 0 } } };
+  fs.writeFileSync(path.join(dir, `${id}.jsonl`), JSON.stringify(line) + '\n');
+}
+
+test('an unusable Claude ledger is flagged, kept byte for byte, and live transcripts still show', async () => {
   const claudeDir = tempDir();
   const dataDir = tempDir();
+  writeTranscript(claudeDir, 'msg-live', 700);
   const file = path.join(dataDir, 'claude-ledger.json');
-  for (const [bytes, kind] of [['{broken', 'corrupt'], [JSON.stringify({ version: 9, records: {} }), 'unsupported'], [JSON.stringify({ version: 1, records: [] }), 'unsupported']]) {
+  const cases = [['{broken', 'corrupt'], [JSON.stringify({ version: 9, records: {} }), 'unsupported'], [JSON.stringify({ version: 1, records: [] }), 'unsupported']];
+  for (const [bytes, kind] of cases) {
     fs.writeFileSync(file, bytes);
-    await assert.rejects(scanClaude({ claudeDir, dataDir }), (error) => error instanceof LedgerError && error.kind === kind);
-    assert.equal(fs.readFileSync(file, 'utf8'), bytes);
+    const scan = await scanClaude({ claudeDir, dataDir });
+    assert.equal(scan.degraded, kind);
+    assert.equal(scan.events.reduce((n, event) => n + event.total, 0), 700, 'transcripts on disk are still counted');
+    assert.equal(fs.readFileSync(file, 'utf8'), bytes, 'the damaged file is never rewritten');
   }
+});
+
+test('a healthy or missing Claude ledger is not flagged and is written', async () => {
+  const claudeDir = tempDir();
+  const dataDir = tempDir();
+  writeTranscript(claudeDir, 'msg-a', 5);
+  const scan = await scanClaude({ claudeDir, dataDir });
+  assert.equal(scan.degraded, null);
+  assert.equal(Object.keys(JSON.parse(fs.readFileSync(path.join(dataDir, 'claude-ledger.json'), 'utf8')).records).length, 1);
+});
+
+test('LedgerError carries its kind', () => {
+  const error = new LedgerError('corrupt', 'x');
+  assert.equal(error.kind, 'corrupt');
+  assert.match(error.message, /original retained/);
 });

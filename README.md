@@ -99,8 +99,8 @@ uses `%LOCALAPPDATA%\Aerus\AI Usage HUD\data`; `node server.js` uses `data/` nex
 `AERUS_DATA_DIR`). It never overwrites one it cannot read:
 
 - `claude-ledger.json` (Claude Code history kept after Claude Code prunes old transcripts): the HUD
-  reports that it is damaged and leaves it untouched. Restore it from a backup, or move it away and
-  restart to rebuild it from the transcripts Claude Code still has.
+  shows a warning, leaves it untouched, and shows Claude figures from the transcripts Claude Code still
+  has (older usage is missing). Restore the file from a backup, or move it away to start a new one.
 - `account-snapshots.json` (verified Codex account total and Ollama total): the HUD copies the damaged
   file to `account-snapshots.json.corrupt-<id>` (or `.unsupported-<id>`), shows a warning, and starts a
   new one. The Codex total is restored by the next successful online lookup.

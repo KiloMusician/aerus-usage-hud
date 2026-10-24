@@ -51,12 +51,13 @@ test('concurrent account snapshot writes use distinct temporary files', async ()
   assert.equal(fs.readdirSync(root).filter(name => name.endsWith('.tmp')).length, 0);
 });
 
-test('damaged existing Claude ledger fails explicitly and remains byte-identical', async () => {
+test('damaged existing Claude ledger is reported, never shown as a clean zero, and remains byte-identical', async () => {
   const claudeDir = temp();
   const dataDir = temp();
   const file = path.join(dataDir, 'claude-ledger.json');
   fs.writeFileSync(file, '{broken ledger');
-  await assert.rejects(scanClaude({ claudeDir, dataDir }), /ledger corrupt/);
+  const scan = await scanClaude({ claudeDir, dataDir });
+  assert.equal(scan.degraded, 'corrupt');
   assert.equal(fs.readFileSync(file, 'utf8'), '{broken ledger');
 });
 

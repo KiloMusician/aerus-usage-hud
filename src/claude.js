@@ -45,7 +45,18 @@ async function scanClaudeNow({ claudeDir = defaultClaudeDir(), dataDir }) {
   const projectsDir = path.join(claudeDir, 'projects');
   const found = await isDirectory(projectsDir);
   const ledgerFile = path.join(dataDir, 'claude-ledger.json');
-  const ledger = await loadLedger(ledgerFile);
+  // A ledger that exists but cannot be trusted is never replaced and never treated as an empty history.
+  // The scan still reports what the transcripts on disk show, flagged as degraded and not saved, so the
+  // rest of the dashboard keeps working and the damaged file stays exactly as found.
+  let ledger;
+  let degraded = null;
+  try {
+    ledger = await loadLedger(ledgerFile);
+  } catch (error) {
+    if (!(error instanceof LedgerError)) throw error;
+    degraded = error.kind;
+    ledger = { version: LEDGER_VERSION, records: {} };
+  }
   const files = found ? await listJsonl(projectsDir) : [];
 
   let changed = false;
@@ -54,10 +65,10 @@ async function scanClaudeNow({ claudeDir = defaultClaudeDir(), dataDir }) {
       if (mergeRecord(ledger.records, rec)) changed = true;
     }
   }
-  if (changed) await saveLedger(ledgerFile, ledger);
+  if (changed && !degraded) await saveLedger(ledgerFile, ledger);
 
   const events = Object.values(ledger.records).map(toEvent);
-  return { found, files: files.length, events, ledgerRecords: events.length };
+  return { found, files: files.length, events, ledgerRecords: events.length, degraded };
 }
 
 // Returns true when the stored record was added or replaced.

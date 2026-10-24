@@ -216,6 +216,19 @@ test('a damaged saved snapshot is kept aside and reported, not silently replaced
   assert.equal(fs.readFileSync(path.join(data, backups[0]), 'utf8'), damaged);
 });
 
+test('a damaged Claude ledger degrades the Claude figures with a warning but the dashboard keeps working', async () => {
+  const data = path.join(root, 'data');
+  fs.mkdirSync(data, { recursive: true });
+  const ledger = path.join(data, 'claude-ledger.json');
+  fs.writeFileSync(ledger, '{"version":1,"records":{"m":');
+  const reply = await request('/api/usage?range=all');
+  assert.equal(reply.status, 200);
+  const body = JSON.parse(reply.body);
+  assert.ok(body.warnings.some((warning) => /Saved Claude history .* is damaged/.test(warning)), JSON.stringify(body.warnings));
+  assert.equal(body.allTime.ollama.total, 100, 'other providers are unaffected');
+  assert.equal(fs.readFileSync(ledger, 'utf8'), '{"version":1,"records":{"m":');
+});
+
 test('checkRequest accepts port 80 without an explicit port in Host', () => {
   assert.equal(checkRequest({ method: 'GET', pathname: '/', headers: { host: 'localhost' }, port: 80 }).ok, true);
   assert.equal(checkRequest({ method: 'GET', pathname: '/', headers: { host: 'localhost' }, port: 8790 }).ok, false);

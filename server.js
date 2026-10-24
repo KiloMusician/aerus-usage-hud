@@ -5,7 +5,7 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { scanCodex, defaultCodexDir } from './src/codex.js';
-import { scanClaude, defaultClaudeDir, LedgerError } from './src/claude.js';
+import { scanClaude, defaultClaudeDir } from './src/claude.js';
 import { readAccountUsage } from './src/codex-account.js';
 import { readLocalOllamaUsage } from './src/local-ollama.js';
 import { updateStore, recordSnapshot } from './src/account-store.js';
@@ -85,6 +85,12 @@ async function usageFor(url) {
   ]);
   if (!codex.found) warnings.push(`Codex history not found at ${codexDir}.`);
   if (!claude.found) warnings.push(`Claude Code logs not found at ${path.join(claudeDir, 'projects')}.`);
+  if (claude.degraded) {
+    warnings.push(
+      `Saved Claude history (claude-ledger.json) is ${claude.degraded === 'corrupt' ? 'damaged' : claude.degraded === 'unsupported' ? 'from an unknown version' : 'unreadable'}. ` +
+      'The file was left untouched. Claude figures below come only from the transcripts Claude Code still has, so older usage is missing until it is restored.',
+    );
+  }
   const ollamaUsage = ollamaEvents(ollama?.records ?? []);
   // Preserve fallback-price assumptions as explicit user-facing warnings.
   const assumedRates = new Set([...codex.events, ...claude.events].filter((event) =>
@@ -161,8 +167,7 @@ function createServer() {
           send(response, 200, JSON.stringify(await usageFor(url)), 'application/json; charset=utf-8');
         } catch (error) {
           console.error('Aerus usage scan failed:', error);
-          const damaged = error instanceof LedgerError;
-          send(response, 500, JSON.stringify({ error: damaged ? 'Saved Claude history is damaged or unreadable; the original file was left untouched. Restore it from a backup.' : 'Unable to scan local usage.' }), 'application/json; charset=utf-8');
+          send(response, 500, JSON.stringify({ error: 'Unable to scan local usage.' }), 'application/json; charset=utf-8');
         }
         return;
       }
