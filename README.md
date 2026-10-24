@@ -1,5 +1,6 @@
 # aerus-usage-hud
-<img width="693" height="540" alt="860005734_122213049620384450_8885465490720873269_n" src="https://github.com/user-attachments/assets/a6d1565b-3937-481b-bec8-0140eb4ed328" />
+<img width="693" height="540" alt="860005734_122213049620384450_8885465490720873269_n" src="https://github.com/user-attachments/assets/d32c3c5d-4857-405e-8f04-621c858a3696" />
+
 
 # ⚡ Aerus AI Usage HUD
 
