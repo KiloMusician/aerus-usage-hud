@@ -4,9 +4,9 @@ import { projectFromCwd } from '../src/util.js';
 
 // The same session logs can be read on Windows, Linux or macOS, so the answer must not depend on the host OS.
 const cases = [
-  ['C:\\AI-services\\alpha', undefined, 'alpha'],
-  ['C:\\AI-services\\alpha\\', undefined, 'alpha'],
-  ['C:/AI-services/alpha', undefined, 'alpha'],
+  ['C:\\Projects\\alpha', undefined, 'alpha'],
+  ['C:\\Projects\\alpha\\', undefined, 'alpha'],
+  ['C:/Projects/alpha', undefined, 'alpha'],
   ['C:\\Users\\Someone\\Work Ünï', undefined, 'Work Ünï'],
   ['\\\\server\\share\\project', undefined, 'project'],
   ['/home/me/project', undefined, 'project'],
