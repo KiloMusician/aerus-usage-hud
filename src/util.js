@@ -1,4 +1,5 @@
 import fsp from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 
 export function num(value) {
@@ -7,25 +8,50 @@ export function num(value) {
 }
 
 // Token counters from log files: a negative or non-numeric value is damage, not usage, and counts as 0.
+// No single record can honestly hold more than a trillion tokens, so larger values are damage too.
+const MAX_TOKENS_PER_RECORD = 1e12;
+
 export function tokenCount(value) {
-  return Math.max(0, num(value));
+  const n = num(value);
+  return n > MAX_TOKENS_PER_RECORD ? 0 : Math.max(0, n);
+}
+
+// Free-text fields from log files (ids, model names, folders) are bounded before they are stored or shown.
+export function clip(value, max = 200) {
+  const text = String(value ?? '');
+  return text.length > max ? text.slice(0, max) : text;
 }
 
 // Accepts epoch seconds, epoch milliseconds, or an ISO string. Returns epoch ms or null.
-export function parseTime(value) {
+// Times before 2015 or more than a day ahead are damage, not usage: they would otherwise be saved forever.
+const EARLIEST_PLAUSIBLE_MS = Date.UTC(2015, 0, 1);
+
+export function parseTime(value, now = Date.now()) {
+  let t;
   if (value == null || value === '') return null;
   if (typeof value === 'number') {
     if (!Number.isFinite(value) || value <= 0) return null;
-    return value < 1e12 ? value * 1000 : value;
+    t = value < 1e12 ? value * 1000 : value;
+  } else {
+    t = Date.parse(String(value));
   }
-  const t = Date.parse(String(value));
-  return Number.isNaN(t) ? null : t;
+  if (Number.isNaN(t) || t < EARLIEST_PLAUSIBLE_MS || t > now + 86_400_000) return null;
+  return t;
 }
 
 export function normalizeModel(name) {
-  return String(name || 'unknown')
+  return clip(String(name || 'unknown')
     .trim()
-    .replace(/^openai\//i, '');
+    .replace(/^openai\//i, ''), 100);
+}
+
+// Shown to the browser instead of an absolute path: the user's profile folder is not needed to act on a message.
+export function shortPath(p, home = os.homedir()) {
+  const text = String(p);
+  const lower = text.toLowerCase();
+  const prefix = String(home || '').toLowerCase();
+  const inside = prefix && (lower === prefix || (lower.startsWith(prefix) && (text[home.length] === '\\' || text[home.length] === '/')));
+  return inside ? `~${text.slice(home.length).replaceAll('\\', '/')}` : text;
 }
 
 // A cwd recorded on Windows (drive letter or backslashes) must be read with Windows rules even when this

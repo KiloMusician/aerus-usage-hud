@@ -5,16 +5,17 @@
 //    message.id and only the record with the highest output_tokens is kept, so nothing is double counted.
 // 2. Claude Code prunes old transcripts (about 30 days by default). Every message seen is saved to a
 //    local ledger in the HUD data folder, so All Time totals keep history after the source is pruned.
-import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import readline from 'node:readline';
 import { writeFileAtomic } from './atomic-write.js';
+import { boundedLines } from './bounded-lines.js';
 import { claudeCost } from './pricing.js';
-import { isDirectory, listJsonl, normalizeModel, parseTime, projectFromCwd, tokenCount } from './util.js';
+import { clip, isDirectory, listJsonl, normalizeModel, parseTime, projectFromCwd, tokenCount } from './util.js';
 
 const LEDGER_VERSION = 1;
+// A transcript line longer than this is not a usage record; it is skipped without being held in memory.
+const MAX_LINE_CHARS = 8_000_000;
 
 // Thrown when a ledger file exists but cannot be trusted. The file is left exactly as found.
 // kind: 'unreadable' | 'corrupt' | 'unsupported'
@@ -51,7 +52,7 @@ async function scanClaudeNow({ claudeDir = defaultClaudeDir(), dataDir }) {
   let ledger;
   let degraded = null;
   try {
-    ledger = await loadLedger(ledgerFile);
+    ledger = await loadLedgerCached(ledgerFile);
   } catch (error) {
     if (!(error instanceof LedgerError)) throw error;
     degraded = error.kind;
@@ -60,10 +61,15 @@ async function scanClaudeNow({ claudeDir = defaultClaudeDir(), dataDir }) {
   const files = found ? await listJsonl(projectsDir) : [];
 
   let changed = false;
-  for (const file of files) {
-    for (const rec of await readFileRecords(file)) {
-      if (mergeRecord(ledger.records, rec)) changed = true;
+  try {
+    for (const file of files) {
+      for (const rec of await readFileRecords(file)) {
+        if (mergeRecord(ledger.records, rec)) changed = true;
+      }
     }
+  } catch (error) {
+    ledgerCache = null; // records merged in memory but never saved
+    throw error;
   }
   if (changed && !degraded) await saveLedger(ledgerFile, ledger);
 
@@ -73,9 +79,10 @@ async function scanClaudeNow({ claudeDir = defaultClaudeDir(), dataDir }) {
 
 // Returns true when the stored record was added or replaced.
 export function mergeRecord(records, rec) {
-  const prior = records[rec.id];
+  // Message ids come from log files, so '__proto__' or 'constructor' must be ordinary keys.
+  const prior = Object.hasOwn(records, rec.id) ? records[rec.id] : undefined;
   if (prior && prior.output >= rec.output) return false;
-  records[rec.id] = {
+  Object.defineProperty(records, rec.id, { enumerable: true, writable: true, configurable: true, value: {
     id: rec.id,
     at: rec.at,
     sessionId: rec.sessionId,
@@ -86,7 +93,7 @@ export function mergeRecord(records, rec) {
     cacheRead: rec.cacheRead,
     cw5m: rec.cw5m,
     cw1h: rec.cw1h,
-  };
+  } });
   return true;
 }
 
@@ -120,9 +127,7 @@ async function readFileRecords(file) {
 
   const records = [];
   try {
-    const stream = fs.createReadStream(file, { encoding: 'utf8' });
-    const lines = readline.createInterface({ input: stream, crlfDelay: Infinity });
-    for await (const line of lines) {
+    for await (const line of boundedLines(file, MAX_LINE_CHARS)) {
       if (!line.includes('"usage"')) continue;
       let json;
       try {
@@ -156,10 +161,10 @@ function usageRecord(json, file) {
   const id = message.id || json.uuid;
   if (at == null || !id) return null;
   return {
-    id,
+    id: clip(id),
     at,
-    sessionId: json.sessionId || path.basename(file, '.jsonl'),
-    cwd: json.cwd || '',
+    sessionId: clip(json.sessionId || path.basename(file, '.jsonl')),
+    cwd: clip(json.cwd || '', 500),
     model: normalizeModel(message.model),
     input,
     output,
@@ -167,6 +172,28 @@ function usageRecord(json, file) {
     cw5m: Math.max(0, cacheCreation - cw1h),
     cw1h,
   };
+}
+
+// The parsed ledger is kept between scans and reused while the file on disk is exactly what we last read or
+// wrote. Re-parsing a large ledger on every refresh was the main cost of repeated /api/usage requests.
+let ledgerCache = null;
+
+async function loadLedgerCached(file) {
+  let stat;
+  try {
+    stat = await fsp.stat(file);
+  } catch (error) {
+    ledgerCache = null;
+    if (error.code === 'ENOENT') return { version: LEDGER_VERSION, records: {} };
+    throw new LedgerError('unreadable', file, { cause: error });
+  }
+  if (ledgerCache && ledgerCache.file === file && ledgerCache.mtimeMs === stat.mtimeMs && ledgerCache.size === stat.size) {
+    return ledgerCache.ledger;
+  }
+  ledgerCache = null;
+  const ledger = await loadLedger(file);
+  ledgerCache = { file, mtimeMs: stat.mtimeMs, size: stat.size, ledger };
+  return ledger;
 }
 
 async function loadLedger(file) {
@@ -189,5 +216,9 @@ async function loadLedger(file) {
 }
 
 async function saveLedger(file, ledger) {
+  // The cached object has already been changed in memory: if the write fails it must not be trusted.
+  ledgerCache = null;
   await writeFileAtomic(file, JSON.stringify(ledger));
+  const stat = await fsp.stat(file);
+  ledgerCache = { file, mtimeMs: stat.mtimeMs, size: stat.size, ledger };
 }

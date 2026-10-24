@@ -1,13 +1,15 @@
 // Codex CLI history: ~/.codex/sessions and archived_sessions (JSONL).
 // Each turn is read from last_token_usage (the per-turn delta). Cumulative totals are only used
 // as a fallback when no per-turn delta exists, so nothing is counted twice.
-import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import readline from 'node:readline';
+import { boundedLines } from './bounded-lines.js';
 import { codexCost } from './pricing.js';
-import { isDirectory, listJsonl, normalizeModel, parseTime, projectFromCwd, tokenCount } from './util.js';
+import { clip, isDirectory, listJsonl, normalizeModel, parseTime, projectFromCwd, tokenCount } from './util.js';
+
+// A rollout line longer than this is not a token record; it is skipped without being held in memory.
+const MAX_LINE_CHARS = 2_000_000;
 
 export function defaultCodexDir() {
   return process.env.AERUS_CODEX_DIR || process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
@@ -64,10 +66,8 @@ async function parseCodexFile(file, codexDir) {
   const meta = { id: path.basename(file, '.jsonl'), cwd: '', model: 'unknown' };
   const counts = [];
   try {
-    const stream = fs.createReadStream(file, { encoding: 'utf8' });
-    const lines = readline.createInterface({ input: stream, crlfDelay: Infinity });
-    for await (const line of lines) {
-      if (!line || line.length > 2_000_000) continue;
+    for await (const line of boundedLines(file, MAX_LINE_CHARS)) {
+      if (!line) continue;
       if (!line.includes('token_count') && !line.includes('token_usage') && !line.includes('session_meta') && !line.includes('turn_context')) continue;
       let record;
       try {
@@ -77,14 +77,14 @@ async function parseCodexFile(file, codexDir) {
       }
       const payload = record.payload && typeof record.payload === 'object' ? record.payload : {};
       if (record.type === 'session_meta') {
-        meta.id = payload.id || payload.session_id || meta.id;
-        meta.cwd = payload.cwd || meta.cwd;
+        meta.id = clip(payload.id || payload.session_id || meta.id);
+        meta.cwd = clip(payload.cwd || meta.cwd, 500);
         if (payload.model) meta.model = normalizeModel(payload.model);
         continue;
       }
       if (record.type === 'turn_context') {
         if (payload.model) meta.model = normalizeModel(payload.model);
-        if (payload.cwd) meta.cwd = payload.cwd;
+        if (payload.cwd) meta.cwd = clip(payload.cwd, 500);
         continue;
       }
       const info = payload.info && typeof payload.info === 'object' ? payload.info : payload;
