@@ -23,6 +23,10 @@ export function normalizeModel(name) {
     .replace(/^openai\//i, '');
 }
 
+// A cwd recorded on Windows (drive letter or backslashes) must be read with Windows rules even when this
+// process runs on another OS, and vice versa, so pick the path flavour from the string itself.
+const WINDOWS_PATH = /^[A-Za-z]:|\\/;
+
 export function projectFromCwd(cwd, root) {
   if (!cwd || typeof cwd !== 'string') return 'Unattributed';
   let decoded = cwd;
@@ -31,11 +35,11 @@ export function projectFromCwd(cwd, root) {
   } catch {
     decoded = cwd;
   }
-  const portable = decoded.replace(/\\/g, '/');
-  const normalized = path.normalize(portable);
-  if (root && normalized.toLowerCase().startsWith(path.normalize(root).toLowerCase())) return 'Workspace';
-  const base = path.posix.basename(normalized);
-  if (!base || base === '.' || base === path.parse(normalized).root) return 'Unattributed';
+  const flavour = WINDOWS_PATH.test(decoded) ? path.win32 : path.posix;
+  const normalized = flavour.normalize(decoded);
+  if (root && normalized.toLowerCase().startsWith(flavour.normalize(String(root)).toLowerCase())) return 'Workspace';
+  const base = flavour.basename(normalized);
+  if (!base || base === '.' || base === flavour.parse(normalized).root) return 'Unattributed';
   return base;
 }
 
