@@ -1,0 +1,20 @@
+{
+  "name": "aerus-usage-hud",
+  "version": "1.0.0",
+  "description": "Local neon HUD for Codex and Claude Code token usage.",
+  "type": "module",
+  "main": "server.js",
+  "bin": {
+    "aerus-usage-hud": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/usage.test.js test/compatibility.test.js",
+    "check": "node --check server.js && node --check src/util.js && node --check src/pricing.js && node --check src/codex.js && node --check src/claude.js && node --check src/aggregate.js && node --check src/codex-account.js && node --check src/local-ollama.js && node --check src/totals.js && node --check src/account-store.js && node --check public/app.js && node --check scripts/audit-package.mjs && npm test",
+    "audit": "node scripts/audit-package.mjs"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}

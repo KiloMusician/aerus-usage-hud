@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aerus AI Usage HUD</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="hud">
+    <header class="top">
+      <div class="brand">
+        <div class="wordmark">
+          <span class="spark" aria-hidden="true"></span>
+          <h1>AERUS AI USAGE HUD</h1>
+        </div>
+        <p class="tagline">Unified token tracking for Codex, Claude &amp; Ollama</p>
+      </div>
+      <div class="status">
+        <span class="chip" id="chip-scan"><i class="dot ok"></i>Live local scan</span>
+        <span class="chip" id="chip-updated">Loading…</span>
+        <button class="chip chip-btn" id="refresh" type="button" title="Rescan local history">Refresh</button>
+      </div>
+    </header>
+
+    <nav class="bar" aria-label="Time range">
+      <div class="seg" role="tablist">
+        <button type="button" data-range="today" class="active">Today</button>
+        <button type="button" data-range="7d">7 Days</button>
+        <button type="button" data-range="30d">30 Days</button>
+        <button type="button" data-range="all">All Time</button>
+      </div>
+      <div class="pager">
+        <button type="button" id="prev" class="pager-btn" aria-label="Earlier">&#8249;</button>
+        <div class="pager-label" id="range-label">&nbsp;</div>
+        <button type="button" id="next" class="pager-btn" aria-label="Later">&#8250;</button>
+      </div>
+    </nav>
+
+    <div class="banner" id="banner" hidden></div>
+
+    <section class="kpis">
+      <article class="card codex" id="kpi-codex">
+        <div class="card-head">
+          <span class="badge codex-badge">C</span>
+          <div>
+            <p class="eyebrow">Codex total</p>
+            <p class="figure"><span data-field="total">0</span> <small>tokens</small></p>
+          </div>
+        </div>
+        <div class="mini">
+          <div><b data-field="input">0</b><span>Input</span></div>
+          <div><b data-field="output">0</b><span>Output</span></div>
+          <div><b data-field="cacheRead">0</b><span>Cache Read</span></div>
+          <div><b data-field="cacheWrite">0</b><span>Cache Write</span></div>
+        </div>
+        <p class="note" id="codex-note"></p>
+      </article>
+
+      <article class="card grand" id="kpi-grand">
+        <div class="card-head">
+          <span class="badge grand-badge" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow">Grand total</p>
+            <p class="figure"><span data-field="total">0</span> <small>tokens</small></p>
+          </div>
+        </div>
+        <div class="mini">
+          <div><b data-field="input">0</b><span>Input</span></div>
+          <div><b data-field="output">0</b><span>Output</span></div>
+          <div><b data-field="cacheRead">0</b><span>Cache Read</span></div>
+          <div><b data-field="cacheWrite">0</b><span>Cache Write</span></div>
+        </div>
+        <p class="note" id="grand-note"></p>
+      </article>
+
+      <article class="card claude" id="kpi-claude">
+        <div class="card-head">
+          <span class="badge claude-badge">A</span>
+          <div>
+            <p class="eyebrow">Claude total</p>
+            <p class="figure"><span data-field="total">0</span> <small>tokens</small></p>
+          </div>
+        </div>
+        <div class="mini">
+          <div><b data-field="input">0</b><span>Input</span></div>
+          <div><b data-field="output">0</b><span>Output</span></div>
+          <div><b data-field="cacheRead">0</b><span>Cache Read</span></div>
+          <div><b data-field="cacheWrite">0</b><span>Cache Write</span></div>
+        </div>
+        <p class="note" id="claude-note"></p>
+      </article>
+
+      <article class="card ollama" id="kpi-ollama">
+        <div class="card-head">
+          <span class="badge ollama-badge" aria-hidden="true"></span>
+          <div>
+            <p class="eyebrow">Ollama total</p>
+            <p class="figure"><span data-field="total">0</span> <small>tokens</small></p>
+          </div>
+        </div>
+        <div class="mini">
+          <div><b data-field="input">0</b><span>Input</span></div>
+          <div><b data-field="output">0</b><span>Output</span></div>
+          <div><b data-field="cacheRead">0</b><span>Cache Read</span></div>
+          <div><b data-field="cacheWrite">0</b><span>Cache Write</span></div>
+        </div>
+        <p class="note" id="ollama-note"></p>
+      </article>
+    </section>
+
+    <section class="middle">
+      <article class="panel">
+        <header class="panel-head"><h2>Usage comparison</h2></header>
+        <div class="donut-wrap">
+          <svg class="donut" id="donut" viewBox="0 0 200 200" role="img" aria-label="Codex, Claude and Ollama share of tokens"></svg>
+          <ul class="legend">
+            <li class="codex-key"><span class="swatch"></span><div><strong>Codex</strong><small data-share="codex"></small></div></li>
+            <li class="claude-key"><span class="swatch"></span><div><strong>Claude</strong><small data-share="claude"></small></div></li>
+            <li class="ollama-key"><span class="swatch"></span><div><strong>Ollama</strong><small data-share="ollama"></small></div></li>
+          </ul>
+        </div>
+      </article>
+
+      <article class="panel wide">
+        <header class="panel-head">
+          <h2>Usage over time</h2>
+          <div class="legend-inline">
+            <span class="codex-key"><span class="swatch"></span>Codex</span>
+            <span class="claude-key"><span class="swatch"></span>Claude</span>
+            <span class="ollama-key"><span class="swatch"></span>Ollama</span>
+          </div>
+        </header>
+        <div class="chart" id="chart"></div>
+      </article>
+
+      <article class="panel">
+        <header class="panel-head"><h2>Estimated API cost (USD)</h2></header>
+        <ul class="cost-list">
+          <li class="codex-key">
+            <span class="badge small codex-badge">C</span>
+            <span class="cost-name">Codex</span>
+            <span class="cost-val" data-cost="codex"></span>
+            <small data-cost-tokens="codex"></small>
+          </li>
+          <li class="claude-key">
+            <span class="badge small claude-badge">A</span>
+            <span class="cost-name">Claude</span>
+            <span class="cost-val" data-cost="claude"></span>
+            <small data-cost-tokens="claude"></small>
+          </li>
+          <li class="ollama-key">
+            <span class="badge small ollama-badge" aria-hidden="true"></span>
+            <span class="cost-name">Ollama</span>
+            <span class="cost-val" data-cost="ollama"></span>
+            <small data-cost-tokens="ollama"></small>
+          </li>
+          <li class="combined">
+            <span class="badge small grand-badge" aria-hidden="true"></span>
+            <span class="cost-name">Combined estimate</span>
+            <span class="cost-val" data-cost="grand"></span>
+            <small data-cost-tokens="grand"></small>
+          </li>
+        </ul>
+        <p class="fine">Estimates use public list prices. Actual costs may differ, and subscription plans are not billed per token. Ollama runs locally, so its cost is $0.00 here. Electricity and hardware are not included. Account-only Codex usage has no per-token split, so it is not priced.</p>
+      </article>
+    </section>
+
+    <section class="panel sessions">
+      <header class="panel-head">
+        <h2>Recent sessions</h2>
+        <button type="button" class="ghost" id="toggle-sessions">View all sessions &rarr;</button>
+      </header>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th class="num">#</th>
+              <th>Provider</th>
+              <th>Session / Project</th>
+              <th>Model</th>
+              <th>Date &amp; Time</th>
+              <th class="num">Input</th>
+              <th class="num">Output</th>
+              <th class="num">Cache</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody id="sessions"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span><i class="dot ok"></i>Local usage database</span>
+      <span id="foot-sources"></span>
+      <span>v1.0.0</span>
+      <span class="brand-foot">Aerus Creations &nbsp;|&nbsp; A higher kind of intelligence</span>
+    </footer>
+  </div>
+
+  <div class="tooltip" id="tooltip" hidden></div>
+  <script src="app.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <!-- No .pdb: it would record this PC's build paths in the distributed app. -->
+    <DebugType>none</DebugType>
+    <PublishSingleFile>false</PublishSingleFile>
+    <AssemblyName>Aerus AI Usage HUD</AssemblyName>
+    <RootNamespace>Aerus.UsageHud.Desktop</RootNamespace>
+    <ApplicationIcon>..\assets\aerus-usage-hud.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Product>Aerus AI Usage HUD</Product>
+    <Company>Aerus Creations</Company>
+    <Copyright>Copyright © Aerus Creations</Copyright>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
+  </ItemGroup>
+</Project>

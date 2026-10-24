@@ -1,0 +1,13 @@
+node_modules/
+*.log
+.DS_Store
+.env
+data/
+*.tmp
+# Packaging outputs and local tools
+build-tools/
+packaging/stage/
+packaging/dist/
+desktop/bin/
+desktop/obj/
+packaging/native/
