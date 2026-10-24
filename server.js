@@ -5,10 +5,11 @@ import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { scanCodex, defaultCodexDir } from './src/codex.js';
-import { scanClaude, defaultClaudeDir } from './src/claude.js';
+import { scanClaude, defaultClaudeDir, LedgerError } from './src/claude.js';
 import { readAccountUsage } from './src/codex-account.js';
 import { readLocalOllamaUsage } from './src/local-ollama.js';
-import { loadStore, saveStore, recordSnapshot } from './src/account-store.js';
+import { updateStore, recordSnapshot } from './src/account-store.js';
+import { checkRequest } from './src/http-guard.js';
 import { computeCodexTotals, computeOllamaTotal, ollamaEvents } from './src/totals.js';
 import { buildView, RANGES } from './src/aggregate.js';
 import { codexRate, claudeRate } from './src/pricing.js';
@@ -69,13 +70,6 @@ function clampOffset(raw) {
   return Math.min(0, Math.max(-3650, n));
 }
 
-let snapshotQueue = Promise.resolve();
-function serializeSnapshot(task) {
-  const run = snapshotQueue.then(task);
-  snapshotQueue = run.catch(() => {});
-  return run;
-}
-
 async function usageFor(url) {
   const requested = url.searchParams.get('range');
   const range = RANGES.includes(requested) ? requested : 'today';
@@ -100,14 +94,18 @@ async function usageFor(url) {
 
   let allTime = null;
   if (range === 'all') {
-    const { store, lookup } = await serializeSnapshot(async () => {
-      const store = await loadStore(DATA_DIR);
-      const localTotal = codex.events.reduce((sum, event) => sum + event.total, 0);
+    const localTotal = codex.events.reduce((sum, event) => sum + event.total, 0);
+    const { store, result: lookup, problem, backup } = await updateStore(DATA_DIR, async (store) => {
       const lookup = await reconcileAccount(store, localTotal);
       const ollamaChanged = recordOllama(store, ollama);
-      if (lookup.changed || ollamaChanged) await saveStore(DATA_DIR, store);
-      return { store, lookup };
+      return { ...lookup, changed: lookup.changed || ollamaChanged };
     });
+    if (problem) {
+      warnings.push(
+        `Saved account snapshots were ${problem === 'corrupt' ? 'damaged' : problem === 'unsupported' ? 'from an unknown version' : 'unreadable'}` +
+        (backup ? `; the original was kept as ${backup} in the HUD data folder.` : '; the original was left untouched and new snapshots are not being saved.'),
+      );
+    }
 
     allTime = {
       codex: computeCodexTotals({ events: codex.events, account: store.current }),
@@ -138,49 +136,57 @@ async function usageFor(url) {
   });
 }
 
-function send(response, status, body, type) {
-  response.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+function send(response, status, body, type, extra = {}) {
+  response.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...extra });
   response.end(body);
 }
 
 function createServer() {
   return http.createServer(async (request, response) => {
     try {
-    const allowedHosts = new Set([
-      `127.0.0.1:${request.socket.localPort}`,
-      `localhost:${request.socket.localPort}`,
-    ]);
-    if (!allowedHosts.has(String(request.headers.host || '').toLowerCase())) {
-      send(response, 403, 'Forbidden', 'text/plain; charset=utf-8');
-      return;
-    }
-    const url = new URL(request.url || '/', `http://${HOST}`);
-    if (url.pathname === '/api/usage') {
-      try {
-        send(response, 200, JSON.stringify(await usageFor(url)), 'application/json; charset=utf-8');
-      } catch (error) {
-        console.error('Aerus usage scan failed:', error);
-        send(response, 500, JSON.stringify({ error: /Claude history ledger/.test(error.message) ? 'Saved Claude history is damaged or unreadable; original preserved. Restore from backup.' : 'Unable to scan local usage.' }), 'application/json; charset=utf-8');
+      const url = new URL(request.url || '/', `http://${HOST}`);
+      const verdict = checkRequest({
+        method: request.method,
+        pathname: url.pathname,
+        headers: request.headers,
+        port: request.socket.localPort,
+      });
+      if (!verdict.ok) {
+        send(response, verdict.status, verdict.reason, 'text/plain; charset=utf-8', verdict.status === 405 ? { Allow: 'GET, HEAD' } : {});
+        return;
       }
-      return;
-    }
 
-    const rel = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
-    const file = path.normalize(path.join(ROOT, rel));
-    if (file !== ROOT && !file.startsWith(ROOT + path.sep)) {
-      send(response, 403, 'Forbidden', 'text/plain; charset=utf-8');
-      return;
-    }
-    try {
-      const body = await fsp.readFile(file);
-      send(response, 200, body, TYPES[path.extname(file)] || 'application/octet-stream');
-    } catch (error) {
-      if (error.code === 'ENOENT' || error.code === 'EISDIR') {
-        send(response, 404, 'Not found', 'text/plain; charset=utf-8');
-      } else {
-        throw error;
+      if (url.pathname === '/api/usage') {
+        try {
+          send(response, 200, JSON.stringify(await usageFor(url)), 'application/json; charset=utf-8');
+        } catch (error) {
+          console.error('Aerus usage scan failed:', error);
+          const damaged = error instanceof LedgerError;
+          send(response, 500, JSON.stringify({ error: damaged ? 'Saved Claude history is damaged or unreadable; the original file was left untouched. Restore it from a backup.' : 'Unable to scan local usage.' }), 'application/json; charset=utf-8');
+        }
+        return;
       }
-    }
+
+      const decoded = url.pathname === '/' ? '/index.html' : decodeURIComponent(url.pathname);
+      if (decoded.includes('\0')) {
+        send(response, 400, JSON.stringify({ error: 'Malformed URL.' }), 'application/json; charset=utf-8');
+        return;
+      }
+      const file = path.normalize(path.join(ROOT, decoded));
+      if (file !== ROOT && !file.startsWith(ROOT + path.sep)) {
+        send(response, 403, 'Forbidden', 'text/plain; charset=utf-8');
+        return;
+      }
+      try {
+        const body = await fsp.readFile(file);
+        send(response, 200, body, TYPES[path.extname(file)] || 'application/octet-stream');
+      } catch (error) {
+        if (error.code === 'ENOENT' || error.code === 'EISDIR' || error.code === 'ENOTDIR') {
+          send(response, 404, 'Not found', 'text/plain; charset=utf-8');
+        } else {
+          throw error;
+        }
+      }
     } catch (error) {
       if (response.headersSent) { response.destroy(); return; }
       const malformed = error instanceof URIError || error.code === 'ERR_INVALID_URL';
