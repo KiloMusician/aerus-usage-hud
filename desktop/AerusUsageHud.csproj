@@ -11,7 +11,7 @@
     <AssemblyName>Aerus AI Usage HUD</AssemblyName>
     <RootNamespace>Aerus.UsageHud.Desktop</RootNamespace>
     <ApplicationIcon>..\assets\aerus-usage-hud.ico</ApplicationIcon>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Product>Aerus AI Usage HUD</Product>
     <Company>Aerus Creations</Company>
     <Copyright>Copyright © Aerus Creations</Copyright>

@@ -1,6 +1,6 @@
 {
   "name": "aerus-usage-hud",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Local neon HUD for Codex and Claude Code token usage.",
   "type": "module",
   "main": "server.js",

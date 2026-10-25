@@ -156,6 +156,22 @@ Released under the **MIT License**.
 
 See [LICENSE](./LICENSE) for details.
 
+### Third-Party Branding & Disclaimer
+
+Aerus AI Usage HUD is an independent software project developed by Aeru Creations.
+
+Third-party software names, trademarks, logos, icons, and associated branding remain the property of their respective owners.
+
+Aerus AI Usage HUD is not affiliated with, sponsored by, or endorsed by OpenAI, Anthropic, Ollama, Microsoft, or other third-party software providers unless explicitly stated otherwise.
+
+References to Codex, Claude Code, Ollama, and other supported products are made to identify compatibility and available usage sources.
+
+The project's MIT License applies to the material covered by that license. Third-party software, trademarks, artwork, and dependencies remain subject to their applicable terms and permissions.
+
+This disclaimer does not itself grant redistribution rights to third-party assets.
+
+See [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for the bundled components and their notices.
+
 ---
 
 ## ❤️ Aeru Creations

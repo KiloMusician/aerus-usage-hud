@@ -11,7 +11,7 @@
   !error "OUTPUT_DIR must point at the installer output folder"
 !endif
 !ifndef APP_VERSION
-  !define APP_VERSION "1.0.1"
+  !define APP_VERSION "1.0.2"
 !endif
 
 !define APP_NAME "Aerus AI Usage HUD"
