@@ -4,6 +4,10 @@
 
 
 # ⚡ Aerus AI Usage HUD
+![Version](https://img.shields.io/badge/Version-1.0.0-00CED1?style=for-the-badge)
+![Platform](https://img.shields.io/badge/Platform-Windows-0078D4?style=for-the-badge&logo=windows)
+![License](https://img.shields.io/badge/License-MIT-gold?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Released-brightgreen?style=for-the-badge)
 
 ### One dashboard. Multiple AI tools. Your usage at a glance.
 
