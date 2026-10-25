@@ -57,16 +57,16 @@ Whether you're writing code, building applications, experimenting with local mod
 
 ### Windows
 
-**Current installer: v1.0.0**
+**Current installer: v1.0.2**
 
 Download:
 
-[Aerus AI Usage HUD — Windows Installer](./AerusAIUsageHUD-Setup-v1.0.0.exe)
+[Aerus AI Usage HUD — Windows Installer](./AerusAIUsageHUD-Setup-v1.0.2.exe)
 
 **Installation steps:**
 
 1. Download the installer from this repository.
-2. Run `AerusAIUsageHUD-Setup-v1.0.0.exe`.
+2. Run `AerusAIUsageHUD-Setup-v1.0.2.exe`.
 3. Follow the installation prompts.
 4. Launch Aerus AI Usage HUD.
 5. Use your supported AI tools and review available activity in the HUD.
