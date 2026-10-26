@@ -1,4 +1,3 @@
-# Aerus Usage Hud
 Part of the Aeru Creations toolset — see EZ AI for the full hub.
 <img width="1692" height="1359" alt="image" src="https://github.com/user-attachments/assets/5a94c987-2b11-4c87-9609-35bc86dbc61e" />
 
